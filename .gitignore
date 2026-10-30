@@ -1,0 +1,25 @@
+# Python Virtual Environment
+venv/
+.venv/
+env/
+ENV/
+
+# Python cache & bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment & logs
+.env
+*.log
+
+# Operating System files
+.DS_Store
+Thumbs.db
+Desktop.ini
