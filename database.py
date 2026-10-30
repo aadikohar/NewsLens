@@ -3,11 +3,24 @@ import json
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
+import os
+import shutil
+
 # Base directory for the project (relative to this file's location)
 BASE_DIR = Path(__file__).resolve().parent
 
-# Database file path
-DB_PATH = BASE_DIR / "newslens.db"
+# On Vercel serverless functions, the deployment directory is read-only.
+# We copy newslens.db to /tmp so SQLite can open, read and write freely.
+if os.environ.get("VERCEL"):
+    DB_PATH = Path("/tmp") / "newslens.db"
+    source_db = BASE_DIR / "newslens.db"
+    if not DB_PATH.exists() and source_db.exists():
+        try:
+            shutil.copy2(source_db, DB_PATH)
+        except Exception:
+            DB_PATH = source_db
+else:
+    DB_PATH = BASE_DIR / "newslens.db"
 
 
 def get_connection() -> sqlite3.Connection:

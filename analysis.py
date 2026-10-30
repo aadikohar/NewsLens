@@ -11,11 +11,33 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 # Local import from our database helpers
 from database import add_analysis, get_connection
 
+import os
+import re
+
 # Ensure required NLTK data is available (run once)
 try:
     _ = sent_tokenize("test")
-except LookupError:
-    nltk_download("punkt")
+except Exception:
+    try:
+        if os.environ.get("VERCEL"):
+            tmp_nltk = "/tmp/nltk_data"
+            os.makedirs(tmp_nltk, exist_ok=True)
+            import nltk
+            nltk.data.path.append(tmp_nltk)
+            nltk_download("punkt", download_dir=tmp_nltk, quiet=True)
+        else:
+            nltk_download("punkt", quiet=True)
+    except Exception:
+        pass
+
+
+def safe_sent_tokenize(text: str) -> List[str]:
+    """Tokenize sentences using NLTK with regex fallback."""
+    try:
+        return sent_tokenize(text)
+    except Exception:
+        sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", text) if s.strip()]
+        return sentences or [text]
 
 # Configure logging
 logging.basicConfig(
@@ -108,7 +130,7 @@ def analyze_article(
     headline_score = analyzer.polarity_scores(headline).get("compound", 0.0)
 
     # Split body into sentences
-    sentences = sent_tokenize(body_text)
+    sentences = safe_sent_tokenize(body_text)
     # Exclude quoted speech for loaded‑wording calculations
     eligible_sentences = [s for s in sentences if not is_quoted(s)]
     flagged = flag_loaded_wording(eligible_sentences)
