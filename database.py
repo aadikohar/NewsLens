@@ -1,8 +1,8 @@
 import sqlite3
 import json
+import gzip
 from pathlib import Path
 from typing import List, Dict, Any, Optional
-
 import os
 import shutil
 
@@ -13,18 +13,96 @@ BASE_DIR = Path(__file__).resolve().parent
 # We copy newslens.db to /tmp so SQLite can open, read and write freely.
 if os.environ.get("VERCEL"):
     DB_PATH = Path("/tmp") / "newslens.db"
-    source_db = BASE_DIR / "newslens.db"
-    if not DB_PATH.exists() and source_db.exists():
-        try:
-            shutil.copy2(source_db, DB_PATH)
-        except Exception:
-            DB_PATH = source_db
+    if not DB_PATH.exists():
+        for candidate in [
+            BASE_DIR / "newslens.db",
+            Path.cwd() / "newslens.db",
+            Path("/var/task") / "newslens.db",
+            BASE_DIR.parent / "newslens.db",
+        ]:
+            if candidate.exists() and candidate.stat().st_size > 50000:
+                try:
+                    shutil.copy2(candidate, DB_PATH)
+                    break
+                except Exception:
+                    pass
 else:
     DB_PATH = BASE_DIR / "newslens.db"
+
+_db_initialized = False
+
+
+def seed_from_archive() -> bool:
+    """Populate database from seed_data.json.gz if available."""
+    candidate_paths = [
+        BASE_DIR / "seed_data.json.gz",
+        Path.cwd() / "seed_data.json.gz",
+        Path("/var/task") / "seed_data.json.gz",
+        BASE_DIR.parent / "seed_data.json.gz",
+    ]
+    seed_file = None
+    for p in candidate_paths:
+        if p.exists():
+            seed_file = p
+            break
+    if not seed_file:
+        return False
+
+    try:
+        with gzip.open(seed_file, "rt", encoding="utf-8") as f:
+            data = json.load(f)
+
+        conn = sqlite3.connect(DB_PATH)
+        cur = conn.cursor()
+        for s in data.get("sources", []):
+            cur.execute(
+                "INSERT OR IGNORE INTO sources VALUES (?,?,?,?,?,?)",
+                (s["source_id"], s["name"], s["feed_url"], s["enabled"], s["last_success"], s["last_error"]),
+            )
+        for t in data.get("topics", []):
+            cur.execute(
+                "INSERT OR IGNORE INTO topics VALUES (?,?,?,?,?)",
+                (t["topic_id"], t["title"], t["created_at"], t["article_count"], t.get("clustering_cfg")),
+            )
+        for a in data.get("articles", []):
+            cur.execute(
+                "INSERT OR IGNORE INTO articles VALUES (?,?,?,?,?,?,?,?)",
+                (a["article_id"], a["source_id"], a["headline"], a["url"], a["publication_date"], a["clean_text"], a["topic_id"], a["collected_at"]),
+            )
+        for an in data.get("analysis", []):
+            cur.execute(
+                "INSERT OR IGNORE INTO analysis VALUES (?,?,?,?,?,?,?,?)",
+                (an["analysis_id"], an["article_id"], an["headline_sentiment"], an["body_sentiment"], an["loaded_wording_pct"], an.get("flagged_sentences"), an["version"], an["analyzed_at"]),
+            )
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"Error seeding database: {e}")
+        return False
+
+
+def ensure_initialized() -> None:
+    """Ensure database tables exist and are seeded if empty."""
+    init_db()
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cur = conn.cursor()
+        cur.execute("SELECT COUNT(*) FROM topics")
+        count = cur.fetchone()[0]
+        conn.close()
+        if count == 0:
+            seed_from_archive()
+    except Exception:
+        pass
 
 
 def get_connection() -> sqlite3.Connection:
     """Return a SQLite connection with dict‑like row access."""
+    global _db_initialized
+    if not _db_initialized:
+        _db_initialized = True
+        ensure_initialized()
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
@@ -39,7 +117,7 @@ def init_db() -> None:
     * articles – raw article data
     * analysis – sentiment and loaded‑wording results
     """
-    conn = get_connection()
+    conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
     cur.executescript(
         """
