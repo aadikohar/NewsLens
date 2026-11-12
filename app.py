@@ -241,6 +241,14 @@ def get_article(article_id):
 @app.route('/api/index.py')
 @app.route('/api/index')
 def index():
+    if request.args.get('debug') == '1':
+        return jsonify({
+            'PATH_INFO': request.environ.get('PATH_INFO'),
+            'SCRIPT_NAME': request.environ.get('SCRIPT_NAME'),
+            'RAW_URI': request.environ.get('RAW_URI'),
+            'REQUEST_URI': request.environ.get('REQUEST_URI'),
+            'HEADERS': {k: v for k, v in request.environ.items() if k.startswith('HTTP_')},
+        })
     return app.send_static_file('index.html')
 
 if __name__ == '__main__':
