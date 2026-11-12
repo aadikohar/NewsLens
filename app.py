@@ -19,10 +19,48 @@ from database import (
     assign_articles_to_topic,
     get_available_articles,
     find_articles_by_keywords,
+    ensure_initialized,
 )
 from clustering import cluster_articles
 
-app = Flask(__name__, static_folder=str(Path(__file__).parent / 'static'))
+# Ensure database tables exist and are seeded (needed for Vercel serverless instances)
+ensure_initialized()
+
+class VercelPathMiddleware:
+    """WSGI Middleware to restore original PATH_INFO under Vercel rewrites.
+    
+    In modern Vercel backend framework projects, internal rewrites route
+    requests using the rewritten destination path (e.g. /api/index.py).
+    This middleware checks Vercel's proxy headers (HTTP_X_FORWARDED_URI,
+    HTTP_X_MATCHED_PATH, HTTP_X_ORIGINAL_URL) and restores PATH_INFO so Flask
+    routes match the actual requested URL (/api/topics, /api/sources, etc.).
+    """
+    def __init__(self, wsgi_app):
+        self.wsgi_app = wsgi_app
+
+    def __call__(self, environ, start_response):
+        forwarded = (
+            environ.get('HTTP_X_FORWARDED_URI')
+            or environ.get('HTTP_X_MATCHED_PATH')
+            or environ.get('HTTP_X_ORIGINAL_URL')
+            or environ.get('HTTP_X_NOW_ROUTE_URI')
+        )
+        if forwarded:
+            clean_path = forwarded.split('?')[0]
+            if clean_path:
+                environ['PATH_INFO'] = clean_path
+        else:
+            path_info = environ.get('PATH_INFO', '')
+            for prefix in ('/api/index.py', '/api/index'):
+                if path_info.startswith(prefix):
+                    rest = path_info[len(prefix):]
+                    environ['PATH_INFO'] = rest if rest else '/'
+                    break
+
+        return self.wsgi_app(environ, start_response)
+
+app = Flask(__name__, static_folder=str(Path(__file__).resolve().parent / 'static'), static_url_path='/static')
+app.wsgi_app = VercelPathMiddleware(app.wsgi_app)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
@@ -199,10 +237,13 @@ def get_article(article_id):
 
 # Serve the front‑end index page
 @app.route('/')
+@app.route('/index.html')
+@app.route('/api/index.py')
+@app.route('/api/index')
 def index():
     return app.send_static_file('index.html')
 
 if __name__ == '__main__':
     init_db()
-    app.static_folder = str(Path(__file__).parent / 'static')
+    app.static_folder = str(Path(__file__).resolve().parent / 'static')
     app.run(host='0.0.0.0', port=5000, debug=True)

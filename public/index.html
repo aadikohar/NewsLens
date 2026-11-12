@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NewsLens – Compare How Outlets Frame the Same Story</title>
+    <meta name="description"
+        content="NewsLens analyzes how different news outlets report the same story. Compare sentiment, bias, and loaded language across sources side by side." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;600;700;800&display=swap"
+        rel="stylesheet" />
+    <link rel="stylesheet" href="/static/style.css" />
+</head>
+
+<body>
+
+    <!-- ── Header ─────────────────────────────────────────────── -->
+    <header class="header">
+        <div class="header-inner">
+            <div class="logo">
+                <div class="logo-icon" aria-hidden="true">
+                    <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="18" cy="18" r="17" stroke="url(#lg1)" stroke-width="2" />
+                        <circle cx="18" cy="18" r="10" fill="url(#lg2)" opacity="0.3" />
+                        <line x1="5" y1="12" x2="31" y2="12" stroke="url(#lg1)" stroke-width="1.5"
+                            stroke-linecap="round" />
+                        <line x1="5" y1="18" x2="31" y2="18" stroke="url(#lg1)" stroke-width="1.5"
+                            stroke-linecap="round" />
+                        <line x1="5" y1="24" x2="31" y2="24" stroke="url(#lg1)" stroke-width="1.5"
+                            stroke-linecap="round" />
+                        <defs>
+                            <linearGradient id="lg1" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse">
+                                <stop stop-color="#C58B52" />
+                                <stop offset="1" stop-color="#79513A" />
+                            </linearGradient>
+                            <linearGradient id="lg2" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse">
+                                <stop stop-color="#EAD8C5" />
+                                <stop offset="1" stop-color="#C58B52" />
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                </div>
+                <span class="logo-text">NewsLens</span>
+            </div>
+            <nav class="header-nav">
+                <button id="nav-topics-btn" class="nav-btn active" aria-label="View Topics">Topics</button>
+                <button id="nav-sources-btn" class="nav-btn" aria-label="View Sources">Sources</button>
+            </nav>
+            <div class="header-status">
+                <span id="status-dot" class="status-dot"></span>
+                <span id="status-label" class="status-label">Connecting…</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- ── Hero Banner ────────────────────────────────────────── -->
+    <div class="hero">
+        <div class="hero-inner">
+            <h1 class="hero-title">Media Bias, <span class="highlight-text">Decoded.</span></h1>
+            <p class="hero-sub">Compare how different outlets frame the same story — sentiment scores, loaded language,
+                and side-by-side analysis.</p>
+            <div class="search-bar-wrap">
+                <div class="search-bar">
+                    <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8" />
+                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                    </svg>
+                    <input id="search-input" type="text" placeholder="Search topics…" aria-label="Search topics" />
+                    <button id="search-clear" class="search-clear hidden" aria-label="Clear search">✕</button>
+                </div>
+            </div>
+        </div>
+        <div class="hero-bg-orbs" aria-hidden="true">
+            <span class="orb orb-1"></span>
+            <span class="orb orb-2"></span>
+            <span class="orb orb-3"></span>
+        </div>
+    </div>
+
+    <!-- ── Main Content ───────────────────────────────────────── -->
+    <main class="main-content" id="main-content">
+
+        <!-- Topics View -->
+        <section id="topics-section" class="page-section" aria-label="Detected Topics">
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title">Detected Topics</h2>
+                    <p class="section-subtitle" id="topics-count-label">Loading…</p>
+                </div>
+                <div class="section-actions">
+                    <div class="sort-controls">
+                        <label for="sort-select" class="sr-only">Sort topics by</label>
+                        <select id="sort-select" class="sort-select" aria-label="Sort topics">
+                            <option value="article_count">Most Articles</option>
+                            <option value="title">Alphabetical</option>
+                            <option value="created_at">Newest First</option>
+                        </select>
+                    </div>
+                    <button id="add-topic-btn" class="btn btn-primary" aria-label="Add new topic">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        <span>Add Topic</span>
+                    </button>
+                    <button id="cluster-topics-btn" class="btn btn-secondary" title="Auto-detect & cluster unassigned articles into topics" aria-label="Auto-cluster topics">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                        <span>Auto-Cluster</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Category / Tag Filter Pills -->
+            <div class="topic-filter-pills" id="topic-filter-pills">
+                <button class="pill-btn active" data-filter="all">All Topics</button>
+                <button class="pill-btn" data-filter="cyclone">Cyclone & Weather</button>
+                <button class="pill-btn" data-filter="election">Politics & Elections</button>
+                <button class="pill-btn" data-filter="court">Legal & Courts</button>
+                <button class="pill-btn" data-filter="market">Markets & Economy</button>
+                <button class="pill-btn" data-filter="modi">National / Govt</button>
+            </div>
+
+            <div id="topics-skeleton" class="skeleton-grid" aria-hidden="true">
+                <div class="skeleton-card"></div>
+                <div class="skeleton-card"></div>
+                <div class="skeleton-card"></div>
+                <div class="skeleton-card"></div>
+                <div class="skeleton-card"></div>
+                <div class="skeleton-card"></div>
+            </div>
+
+            <div id="topics-container" class="topics-grid hidden"></div>
+            <div id="topics-empty" class="empty-state hidden">
+                <div class="empty-icon">📭</div>
+                <h3>No Topics Found</h3>
+                <p>No articles have been clustered yet. Run the fetcher and clustering pipeline or use "Add Topic" above to get started.</p>
+            </div>
+        </section>
+
+        <!-- Sources View -->
+        <section id="sources-section" class="page-section hidden" aria-label="News Sources">
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title">News Sources</h2>
+                    <p class="section-subtitle" id="sources-count-label">Loading…</p>
+                </div>
+            </div>
+            <div id="sources-skeleton" class="skeleton-grid" aria-hidden="true">
+                <div class="skeleton-card"></div>
+                <div class="skeleton-card"></div>
+                <div class="skeleton-card"></div>
+            </div>
+            <div id="sources-container" class="sources-grid hidden"></div>
+            <div id="sources-empty" class="empty-state hidden">
+                <div class="empty-icon">📡</div>
+                <h3>No Sources Configured</h3>
+                <p>Add RSS feed sources to the database to start collecting articles.</p>
+            </div>
+        </section>
+
+        <!-- Compare View -->
+        <section id="compare-section" class="page-section hidden" aria-label="Article Comparison">
+            <div class="compare-header">
+                <button id="back-btn" class="back-btn" aria-label="Back to topics">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="15 18 9 12 15 6" />
+                    </svg>
+                    Back to Topics
+                </button>
+                <div class="compare-meta">
+                    <h2 id="compare-title" class="compare-title"></h2>
+                    <p id="compare-subtitle" class="compare-subtitle"></p>
+                </div>
+            </div>
+
+            <div id="stats-bar" class="stats-bar hidden">
+                <div class="stat-pill">
+                    <span class="stat-icon">📰</span>
+                    <span class="stat-value" id="stat-sources-val">–</span>
+                    <span class="stat-label">Sources</span>
+                </div>
+                <div class="stat-pill">
+                    <span class="stat-icon">🧠</span>
+                    <span class="stat-value" id="stat-sentiment-val">–</span>
+                    <span class="stat-label">Avg Sentiment</span>
+                </div>
+                <div class="stat-pill">
+                    <span class="stat-icon">⚠️</span>
+                    <span class="stat-value" id="stat-loaded-val">–</span>
+                    <span class="stat-label">Avg Loaded Wording</span>
+                </div>
+                <div class="stat-pill">
+                    <span class="stat-icon">🔍</span>
+                    <span class="stat-value" id="stat-most-biased-val">–</span>
+                    <span class="stat-label">Most Loaded Source</span>
+                </div>
+            </div>
+
+            <div id="spectrum-wrap" class="spectrum-wrap hidden">
+                <div class="spectrum-label-row">
+                    <span class="spectrum-label-neg">Very Negative</span>
+                    <span class="spectrum-label-mid">Neutral</span>
+                    <span class="spectrum-label-pos">Very Positive</span>
+                </div>
+                <div class="spectrum-bar-bg">
+                    <div class="spectrum-track"></div>
+                    <div id="spectrum-markers" class="spectrum-markers"></div>
+                </div>
+                <p class="spectrum-hint">Each dot represents one article's headline sentiment score (−1 = most negative,
+                    +1 = most positive).</p>
+            </div>
+
+            <div id="compare-skeleton" class="skeleton-grid hidden" aria-hidden="true">
+                <div class="skeleton-card tall"></div>
+                <div class="skeleton-card tall"></div>
+                <div class="skeleton-card tall"></div>
+            </div>
+            <div id="compare-container" class="compare-grid"></div>
+            <div id="compare-empty" class="empty-state hidden">
+                <div class="empty-icon">🔎</div>
+                <h3>No Articles</h3>
+                <p>This topic has no articles associated with it yet.</p>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ── Footer ─────────────────────────────────────────────── -->
+    <footer class="footer">
+        <p>Sentiment scores powered by <strong>VADER</strong>. Loaded-wording detection uses a curated lexicon.
+            <em>Treat scores as estimates.</em>
+        </p>
+        <p class="footer-copy">© 2026 NewsLens</p>
+    </footer>
+
+    <!-- ── Add Topic Modal ─────────────────────────────────────── -->
+    <div id="add-topic-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div>
+                    <h3 id="modal-title" class="modal-title">Add New Topic</h3>
+                    <p class="modal-subtitle">Group related articles into a new topic for side-by-side media comparison.</p>
+                </div>
+                <button id="modal-close-btn" class="modal-close" aria-label="Close modal">✕</button>
+            </div>
+
+            <form id="add-topic-form">
+                <div class="form-group">
+                    <label for="topic-title-input">Topic Title <span class="required">*</span></label>
+                    <input id="topic-title-input" type="text" placeholder="e.g. Cyclone Arnab Relief & Rebuilding Efforts" required maxlength="180" />
+                </div>
+
+                <div class="form-tabs">
+                    <button type="button" class="tab-btn active" id="tab-keyword-btn">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+                        Match by Keywords
+                    </button>
+                    <button type="button" class="tab-btn" id="tab-select-btn">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                        Select Articles
+                    </button>
+                </div>
+
+                <!-- Tab 1: Keywords -->
+                <div id="tab-keyword-content" class="tab-content">
+                    <div class="form-group">
+                        <label for="topic-keyword-input">Keywords (comma-separated)</label>
+                        <input id="topic-keyword-input" type="text" placeholder="e.g. cyclone, odisha, relief, shelter" />
+                        <span class="form-hint">Articles containing any of these keywords will be attached to this topic.</span>
+                    </div>
+                    <div id="keyword-match-preview" class="match-preview hidden">
+                        <span id="match-preview-count">0</span> matching articles ready to link.
+                    </div>
+                </div>
+
+                <!-- Tab 2: Manual Select -->
+                <div id="tab-select-content" class="tab-content hidden">
+                    <div class="form-group">
+                        <label for="article-search-input">Search Available Articles</label>
+                        <input id="article-search-input" type="text" placeholder="Type to filter articles…" />
+                    </div>
+                    <div id="modal-articles-list" class="modal-articles-list">
+                        <div class="loading-spinner">Loading articles…</div>
+                    </div>
+                    <div class="selection-footer">
+                        <span id="selection-count">0 articles selected</span>
+                        <button type="button" id="select-all-btn" class="text-btn">Select All Filtered</button>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" id="modal-cancel-btn" class="btn btn-secondary">Cancel</button>
+                    <button type="submit" id="modal-submit-btn" class="btn btn-primary">
+                        <span>Create Topic</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="toast" class="toast hidden" role="alert" aria-live="polite"></div>
+
+    <script src="/static/app.js"></script>
+</body>
+
+</html>

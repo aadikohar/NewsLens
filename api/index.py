@@ -6,5 +6,8 @@ from pathlib import Path
 ROOT_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT_DIR))
 
+from database import ensure_initialized
+ensure_initialized()
+
 from app import app
 

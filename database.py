@@ -5,15 +5,18 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional
 import os
 import shutil
+import tempfile
 
 # Base directory for the project (relative to this file's location)
 BASE_DIR = Path(__file__).resolve().parent
 
 # On Vercel serverless functions, the deployment directory is read-only.
-# We copy newslens.db to /tmp so SQLite can open, read and write freely.
+# We copy newslens.db to a writable temp directory (/tmp) so SQLite can read and write freely.
 if os.environ.get("VERCEL"):
-    DB_PATH = Path("/tmp") / "newslens.db"
-    if not DB_PATH.exists():
+    temp_dir = Path(tempfile.gettempdir())
+    temp_dir.mkdir(parents=True, exist_ok=True)
+    DB_PATH = temp_dir / "newslens.db"
+    if not DB_PATH.exists() or DB_PATH.stat().st_size == 0:
         for candidate in [
             BASE_DIR / "newslens.db",
             Path.cwd() / "newslens.db",

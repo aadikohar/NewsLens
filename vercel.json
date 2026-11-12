@@ -2,18 +2,10 @@
   "version": 2,
   "functions": {
     "api/index.py": {
-      "includeFiles": "{newslens.db,seed_data.json.gz}"
+      "includeFiles": "{newslens.db,seed_data.json.gz,api/seed_data.json.gz,static/**,public/**}"
     }
   },
   "rewrites": [
-    {
-      "source": "/static/(.*)",
-      "destination": "/static/$1"
-    },
-    {
-      "source": "/",
-      "destination": "/static/index.html"
-    },
     {
       "source": "/(.*)",
       "destination": "/api/index.py"
