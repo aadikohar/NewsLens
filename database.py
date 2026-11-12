@@ -36,8 +36,11 @@ def seed_from_archive() -> bool:
     """Populate database from seed_data.json.gz if available."""
     candidate_paths = [
         BASE_DIR / "seed_data.json.gz",
+        BASE_DIR / "api" / "seed_data.json.gz",
         Path.cwd() / "seed_data.json.gz",
+        Path.cwd() / "api" / "seed_data.json.gz",
         Path("/var/task") / "seed_data.json.gz",
+        Path("/var/task/api") / "seed_data.json.gz",
         BASE_DIR.parent / "seed_data.json.gz",
     ]
     seed_file = None
