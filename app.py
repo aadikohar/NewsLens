@@ -31,31 +31,48 @@ class VercelPathMiddleware:
     
     In modern Vercel backend framework projects, internal rewrites route
     requests using the rewritten destination path (e.g. /api/index.py).
-    This middleware checks Vercel's proxy headers (HTTP_X_FORWARDED_URI,
-    HTTP_X_MATCHED_PATH, HTTP_X_ORIGINAL_URL) and restores PATH_INFO so Flask
-    routes match the actual requested URL (/api/topics, /api/sources, etc.).
+    We configure vercel.json to pass the original path in __route__ query parameter,
+    and this middleware restores PATH_INFO and strips __route__ from QUERY_STRING.
+    It also checks Vercel proxy headers and path prefixes as fallbacks.
     """
     def __init__(self, wsgi_app):
         self.wsgi_app = wsgi_app
 
     def __call__(self, environ, start_response):
-        forwarded = (
-            environ.get('HTTP_X_FORWARDED_URI')
-            or environ.get('HTTP_X_MATCHED_PATH')
-            or environ.get('HTTP_X_ORIGINAL_URL')
-            or environ.get('HTTP_X_NOW_ROUTE_URI')
-        )
-        if forwarded:
-            clean_path = forwarded.split('?')[0]
-            if clean_path:
-                environ['PATH_INFO'] = clean_path
+        # 1. Primary: Extract __route__ passed in QUERY_STRING from Vercel rewrite
+        query_string = environ.get('QUERY_STRING', '')
+        if '__route__=' in query_string:
+            from urllib.parse import parse_qs, urlencode
+            params = parse_qs(query_string, keep_blank_values=True)
+            if '__route__' in params:
+                route_path = params.pop('__route__')[0]
+                if route_path:
+                    if '?' in route_path:
+                        route_path, extra_qs = route_path.split('?', 1)
+                        extra_params = parse_qs(extra_qs, keep_blank_values=True)
+                        for k, v in extra_params.items():
+                            params.setdefault(k, []).extend(v)
+                    environ['PATH_INFO'] = route_path
+                environ['QUERY_STRING'] = urlencode(params, doseq=True)
         else:
-            path_info = environ.get('PATH_INFO', '')
-            for prefix in ('/api/index.py', '/api/index'):
-                if path_info.startswith(prefix):
-                    rest = path_info[len(prefix):]
-                    environ['PATH_INFO'] = rest if rest else '/'
-                    break
+            # 2. Fallback: Proxy headers or prefix stripping
+            forwarded = (
+                environ.get('HTTP_X_FORWARDED_URI')
+                or environ.get('HTTP_X_MATCHED_PATH')
+                or environ.get('HTTP_X_ORIGINAL_URL')
+                or environ.get('HTTP_X_NOW_ROUTE_URI')
+            )
+            if forwarded:
+                clean_path = forwarded.split('?')[0]
+                if clean_path:
+                    environ['PATH_INFO'] = clean_path
+            else:
+                path_info = environ.get('PATH_INFO', '')
+                for prefix in ('/api/index.py', '/api/index'):
+                    if path_info.startswith(prefix):
+                        rest = path_info[len(prefix):]
+                        environ['PATH_INFO'] = rest if rest else '/'
+                        break
 
         return self.wsgi_app(environ, start_response)
 
@@ -241,14 +258,6 @@ def get_article(article_id):
 @app.route('/api/index.py')
 @app.route('/api/index')
 def index():
-    if request.args.get('debug') == '1':
-        return jsonify({
-            'PATH_INFO': request.environ.get('PATH_INFO'),
-            'SCRIPT_NAME': request.environ.get('SCRIPT_NAME'),
-            'RAW_URI': request.environ.get('RAW_URI'),
-            'REQUEST_URI': request.environ.get('REQUEST_URI'),
-            'HEADERS': {k: v for k, v in request.environ.items() if k.startswith('HTTP_')},
-        })
     return app.send_static_file('index.html')
 
 if __name__ == '__main__':
